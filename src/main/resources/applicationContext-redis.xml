@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:cache="http://www.springframework.org/schema/cache"
+	xsi:schemaLocation="
+       http://www.springframework.org/schema/beans 
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/cache   
+       http://www.springframework.org/schema/cache/spring-cache-4.2.xsd ">
+
+ 	<!-- 数据库连接池的配置 -->
+	<bean id="jedisPoolConfig" class="redis.clients.jedis.JedisPoolConfig">
+		<property name="maxIdle" value="${spring.redis.pool.max-idle}" /><!-- 最大空闲连接数 -->
+		<property name="minIdle" value="2" /><!-- 最小空闲连接数 -->
+		<property name="maxWaitMillis" value="${spring.redis.pool.max-wait}" /><!-- 获取连接时的最大等待毫秒数 -->
+		<property name="maxTotal" value="${spring.redis.pool.max-active}" /><!-- 最大连接数 -->
+	</bean>
+
+	<!-- redis 数据库相关的配置 -->
+	<bean id="jedisConnFactory"
+		class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory">
+		<constructor-arg ref="jedisPoolConfig" />
+		<property name="hostName" value="${spring.redis.host}" />
+		<property name="port" value="${spring.redis.port}" />
+		<!-- <property name="password" value="${spring.redis.password}"/> -->
+		<property name="database" value="${spring.redis.database}" />
+		<property name="timeout" value="${spring.redis.timeout}" />
+	</bean>
+
+	<bean id="redisTemplate" class="org.springframework.data.redis.core.RedisTemplate">
+		<property name="connectionFactory" ref="jedisConnFactory" />
+
+		<!-- 解决redis数据库key-value乱码的问题 -->
+		<property name="keySerializer">
+			<bean
+				class="org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer" />
+		</property>
+		<property name="valueSerializer">
+			<bean
+				class="org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer" />
+		</property>
+
+		<property name="hashKeySerializer">
+			<bean
+				class="org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer" />
+		</property>
+		<property name="hashValueSerializer">
+			<bean
+				class="org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer" />
+		</property>
+		<property name="stringSerializer">
+			<bean
+				class="org.springframework.data.redis.serializer.StringRedisSerializer" />
+		</property>
+
+	</bean>
+
+	<!-- 缓存的管理 -->
+	<bean id="cacheManager" class="org.springframework.data.redis.cache.RedisCacheManager">
+		<constructor-arg index="0" ref="redisTemplate" />
+		<property name="cacheNames">
+			<list>
+				<value>USERINFO</value>
+				<value>PARAMETER</value>
+				<value>LOGGERTYPE</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 启用缓存注解功能，这个是必须的，否则注解不会生效，另外，该注解一定要声明在spring主配置文件中才会生效 -->
+	<cache:annotation-driven cache-manager="cacheManager" />
+
+</beans>
